@@ -1,34 +1,23 @@
 package dev.stratospheric.todoapp.config;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
-import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderAsyncClientBuilder;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.providers.AwsRegionProvider;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 
 @Configuration
-@Profile("!dev")
 public class AwsConfig {
 
   @Bean
-  public AWSCognitoIdentityProvider awsCognitoIdentityProvider(@Value("${cloud.aws.region.static}") String region,
-                                                               AWSCredentialsProvider awsCredentialsProvider) {
-    return AWSCognitoIdentityProviderAsyncClientBuilder.standard()
-      .withCredentials(awsCredentialsProvider)
-      .withRegion(region)
-      .build();
-  }
-
-  @Bean
-  public AmazonDynamoDB amazonDynamoDB(@Value("${cloud.aws.region.static}") String region,
-                                       AWSCredentialsProvider awsCredentialsProvider) {
-    return AmazonDynamoDBClientBuilder.standard()
-      .withCredentials(awsCredentialsProvider)
-      .withRegion(region)
+  @ConditionalOnProperty(prefix = "custom", name = "use-cognito-as-identity-provider", havingValue = "true")
+  public CognitoIdentityProviderClient cognitoIdentityProviderClient(
+    AwsRegionProvider regionProvider,
+    AwsCredentialsProvider awsCredentialsProvider) {
+    return CognitoIdentityProviderClient.builder()
+      .credentialsProvider(awsCredentialsProvider)
+      .region(regionProvider.getRegion())
       .build();
   }
 }

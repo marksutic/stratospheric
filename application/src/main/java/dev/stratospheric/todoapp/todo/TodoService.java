@@ -3,13 +3,11 @@ package dev.stratospheric.todoapp.todo;
 import dev.stratospheric.todoapp.person.Person;
 import dev.stratospheric.todoapp.person.PersonRepository;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class TodoService {
 
   private final TodoRepository todoRepository;
@@ -25,35 +23,69 @@ public class TodoService {
     this.meterRegistry = meterRegistry;
   }
 
-  public Todo save(Todo todo) {
-    if (todo.getOwner() == null) {
+  public Todo saveNewTodo(Todo todo, String ownerEmail, String ownerName) {
 
-      OidcUser user = (OidcUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Person person = personRepository.findByEmail(ownerEmail).orElse(null);
 
-      String email = user.getEmail();
-      Person person = personRepository.findByEmail(email).orElse(null);
+    if (person == null) {
+      Person newUser = new Person();
+      newUser.setName(ownerName);
+      newUser.setEmail(ownerEmail);
 
-      if (person == null) {
-        Person newUser = new Person();
-        newUser.setName(user.getAttribute("name"));
-        newUser.setEmail(email);
-
-        person = personRepository.save(newUser);
-      }
-      todo.setOwner(person);
-      todo.setStatus(Status.OPEN);
+      person = personRepository.save(newUser);
     }
+    todo.setOwner(person);
+    todo.setStatus(Status.OPEN);
 
     meterRegistry.gauge("stratospheric.todo.created", 1);
 
     return todoRepository.save(todo);
   }
 
-  public Optional<Todo> findById(Long id) {
-    return this.todoRepository.findById(id);
+  public void updateTodo(Todo updatedTodo, long id, String email) {
+    Todo existingTodo = getOwnedOrSharedTodo(id, email);
+
+    existingTodo.setTitle(updatedTodo.getTitle());
+    existingTodo.setDescription(updatedTodo.getDescription());
+    existingTodo.setPriority(updatedTodo.getPriority());
+    existingTodo.setDueDate(updatedTodo.getDueDate());
+
+    this.todoRepository.save(existingTodo);
   }
 
-  public void delete(Todo todo) {
-    this.todoRepository.delete(todo);
+  public void delete(long id, String ownerEmail) {
+    this.todoRepository.delete(getOwnedTodo(id, ownerEmail));
+  }
+
+  public Todo getOwnedOrSharedTodo(long id, String email) {
+    Todo todo = this.todoRepository
+      .findById(id)
+      .orElseThrow(NotFoundException::new);
+
+    if (userIsNotOwner(email, todo) && userIsNotCollaborator(email, todo)) {
+      throw new ForbiddenException();
+    }
+
+    return todo;
+  }
+
+  private boolean userIsNotCollaborator(String email, Todo todo) {
+    return todo.getCollaborators().stream().noneMatch(collaborator -> collaborator.getEmail().equals(email));
+  }
+
+  private boolean userIsNotOwner(String email, Todo todo) {
+    return !todo.getOwner().getEmail().equals(email);
+  }
+
+  private Todo getOwnedTodo(long id, String ownerEmail) {
+    Todo todo = this.todoRepository
+      .findById(id)
+      .orElseThrow(NotFoundException::new);
+
+    if (userIsNotOwner(ownerEmail, todo)) {
+      throw new ForbiddenException();
+    }
+
+    return todo;
   }
 }

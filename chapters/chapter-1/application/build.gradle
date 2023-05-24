@@ -1,12 +1,12 @@
 plugins {
-  id 'org.springframework.boot' version '2.6.3'
-  id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+  id 'org.springframework.boot' version '3.1.0'
+  id 'io.spring.dependency-management' version '1.1.0'
   id 'java'
 }
 
 group = 'dev.stratospheric'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
+sourceCompatibility = '17'
 
 repositories {
   mavenCentral()
@@ -18,7 +18,7 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-web'
   implementation 'com.google.code.findbugs:jsr305:3.0.2'
   developmentOnly 'org.springframework.boot:spring-boot-devtools'
-  testImplementation('org.springframework.boot:spring-boot-starter-test')
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
 test {
@@ -30,4 +30,8 @@ bootRun {
     "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005",
     "-Dspring.profiles.active=dev",
   ]
+}
+
+jar {
+  enabled = false
 }

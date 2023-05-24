@@ -12,8 +12,6 @@ public class DatabaseApp {
   public static void main(final String[] args) {
     App app = new App();
 
-    NetworkApp networkApp = new NetworkApp();
-
     String environmentName = (String) app.getNode().tryGetContext("environmentName");
     Validations.requireNonEmpty(environmentName, "context variable 'environmentName' must not be null");
 

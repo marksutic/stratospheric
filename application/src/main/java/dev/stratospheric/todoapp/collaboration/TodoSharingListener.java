@@ -1,7 +1,6 @@
 package dev.stratospheric.todoapp.collaboration;
 
-import io.awspring.cloud.messaging.listener.SqsMessageDeletionPolicy;
-import io.awspring.cloud.messaging.listener.annotation.SqsListener;
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +32,7 @@ public class TodoSharingListener {
     this.externalUrl = externalUrl;
   }
 
-  @SqsListener(value = "${custom.sharing-queue}", deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
+  @SqsListener(value = "${custom.sharing-queue}")
   public void listenToSharingMessages(TodoCollaborationNotification payload) throws InterruptedException {
     LOG.info("Incoming todo sharing payload: {}", payload);
 
@@ -43,26 +42,29 @@ public class TodoSharingListener {
     message.setSubject("A todo was shared with you");
     message.setText(
       String.format(
-        "Hi %s, \n\n" +
-          "someone shared a Todo from %s with you.\n\n" +
-          "Information about the shared Todo item: \n\n" +
-          "Title: %s \n" +
-          "Description: %s \n" +
-          "Priority: %s \n" +
-          "\n" +
-          "You can accept the collaboration by clicking this link: " +
-          "%s/todo/%s/collaborations/%s/confirm?token=%s " +
-          "\n\n" +
-          "Kind regards, \n" +
-          "Stratospheric",
+        """
+          Hi %s,\s
+
+          someone shared a Todo from %s with you.
+
+          Information about the shared Todo item:\s
+
+          Title: %s\s
+          Description: %s\s
+          Priority: %s\s
+
+          You can accept the collaboration by clicking this link: %s/todo/%s/collaborations/%s/confirm?token=%s\s
+
+          Kind regards,\s
+          Stratospheric""",
         payload.getCollaboratorEmail(),
         externalUrl,
         payload.getTodoTitle(),
         payload.getTodoDescription(),
         payload.getTodoPriority(),
+        externalUrl,
         payload.getTodoId(),
         payload.getCollaboratorId(),
-        externalUrl,
         payload.getToken()
       )
     );
